@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Agen Parasit LLM",
+  "version": "1.0",
+  "description": "Eksperimen adaptasi sistem bypass UI untuk komunikasi WebSocket.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*", 
+    "https://claude.ai/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://claude.ai/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+}
