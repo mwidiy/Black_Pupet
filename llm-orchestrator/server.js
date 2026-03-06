@@ -1,14 +1,34 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const WebSocket = require('ws');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 app.use(express.json());
 
+// === DATABASE KECIL API KEYS ===
+const DB_PATH = path.join(__dirname, 'apikeys.json');
+
+function loadApiKeys() {
+  try {
+    const data = fs.readFileSync(DB_PATH, 'utf-8');
+    return JSON.parse(data);
+  } catch (e) {
+    console.error("Gagal membaca apikeys.json", e);
+    return {};
+  }
+}
+
+function saveApiKeys(db) {
+  fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
+}
+
+
 // === STATE MANAGEMENT ===
-let jobQueue = []; // Berisi: { taskId, prompt, res }
+let jobQueue = []; // Berisi: { taskId, prompt, res, apiKey }
 let isProcessing = false;
-let activeJob = null; // Berisi object utuh dari job yang sedang jalan { taskId, prompt, res }
+let activeJob = null; // Berisi object utuh dari job yang sedang jalan
 let processTimeout = null;
 
 const wss = new WebSocket.Server({ port: 8080 });
@@ -18,6 +38,23 @@ const HTTP_PORT = 3000;
 
 // === PUSAT KOMANDO HTTP API ===
 app.post('/api/chat', (req, res) => {
+  // 1. CEK OTORISASI (BEARER TOKEN)
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized: Missing or Invalid Token format" });
+  }
+
+  const apiKey = authHeader.split(" ")[1];
+  const db = loadApiKeys();
+
+  if (!db[apiKey]) {
+    return res.status(401).json({ error: "Unauthorized: Invalid API Key" });
+  }
+
+  if (db[apiKey].credit <= db[apiKey].usage) {
+    return res.status(403).json({ error: "Forbidden: Kuota API Key habis!" });
+  }
+
   let { prompt } = req.body;
 
   if (!prompt) {
@@ -30,7 +67,7 @@ app.post('/api/chat', (req, res) => {
 
   const taskId = uuidv4();
 
-  console.log(`\n🛎️ [API] Request masuk.`);
+  console.log(`\n🛎️ [API] Request masuk dari Key: ${apiKey.substring(0, 8)}***`);
   console.log(`   Task ID : ${taskId}`);
   console.log(`   Prompt  : "${prompt}"`);
 
@@ -38,6 +75,7 @@ app.post('/api/chat', (req, res) => {
   jobQueue.push({
     taskId: taskId,
     prompt: prompt,
+    apiKey: apiKey, // CATAT KEY MILIK SIAPA
     res: res // Simpan res object HTTP di memori
   });
 
@@ -49,12 +87,11 @@ app.post('/api/chat', (req, res) => {
 
 // === SANG KONDEKTUR (Fungsi Eksekusi Antrean) ===
 function processQueue() {
-  // Jika masih ada yang diproses, atau antrean kosong, abaikan
+  // ... [Tidak berubah]
   if (isProcessing || jobQueue.length === 0) {
     return;
   }
 
-  // Ambil job pertama dari antrean
   isProcessing = true;
   activeJob = jobQueue.shift();
 
@@ -63,30 +100,24 @@ function processQueue() {
 
   const perintah = {
     action: "SEND_PROMPT",
-    taskId: activeJob.taskId, // Sisipkan taskId agar Extension tahu
+    taskId: activeJob.taskId,
     text: activeJob.prompt
   };
 
   console.log(`   -> Mengirim perintah ke Python via WebSocket...`);
 
-  // Broadcast perintah
   wss.clients.forEach(function each(client) {
     if (client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify(perintah));
     }
   });
 
-  // Pasang Timeout 90 detik
   processTimeout = setTimeout(() => {
     console.log(`\n❌ [TIMEOUT] Task ${activeJob.taskId} tidak ada respons dari UI selama 90 detik.`);
-
-    // Balas HTTP Client dengan Error
     activeJob.res.status(504).json({
       success: false,
       error: "Gateway Timeout: UI Automation tidak membalas."
     });
-
-    // Lanjut job selanjutnya
     resetStateAndProcessNext();
   }, 90000);
 }
@@ -95,7 +126,7 @@ function resetStateAndProcessNext() {
   if (processTimeout) clearTimeout(processTimeout);
   isProcessing = false;
   activeJob = null;
-  processQueue(); // Panggil paksa job selanjutnya jika ada
+  processQueue();
 }
 
 // === PUSAT KOMUNIKASI WEBSOCKET ===
@@ -114,22 +145,24 @@ wss.on('connection', function connection(ws) {
         console.log(message.text);
         console.log('=============================================\n');
 
-        // Jika sedang ada job yang diproses
         if (isProcessing && activeJob) {
-          // Idealnya kita mencocokkan message.taskId dengan activeJob.taskId
-          // Namun karena belum tentu Extension Anda sudah mengirim taskId,
-          // Kita asumsikan jawaban yang datang PERTAMA adalah milik activeJob.
+
+          // DEDUCT QUOTA (POTONG KUOTA)
+          const db = loadApiKeys();
+          if (db[activeJob.apiKey]) {
+            db[activeJob.apiKey].usage += 1; // TAMBAH JUMLAH PEMAKAIAN
+            saveApiKeys(db); // SIMPAN KE JSON
+            console.log(`💰 Kuota Dipotong! Pemakaian Key ${activeJob.apiKey.substring(0, 8)}*** kini jadi ${db[activeJob.apiKey].usage} / ${db[activeJob.apiKey].credit}`);
+          }
 
           console.log(`✅ Menyelesaikan HTTP Response untuk Task: ${activeJob.taskId}`);
 
-          // Balas HTTP peminta awal
           activeJob.res.json({
             success: true,
             taskId: activeJob.taskId,
             data: message.text
           });
 
-          // Bersihkan state & Lanjut antrean berikutnya
           resetStateAndProcessNext();
         } else {
           console.log(`⚠️ Jawaban masuk tapi tidak ada Task yang sedang aktif/menunggu.`);

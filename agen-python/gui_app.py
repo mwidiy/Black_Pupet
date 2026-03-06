@@ -2,10 +2,17 @@ import tkinter as tk
 from tkinter import scrolledtext
 import threading
 import requests
-import json
+import os
+from dotenv import load_dotenv
 
-# Konfigurasi API
-API_URL = "http://localhost:3000/api/chat"
+# Load configurasi dari .env
+load_dotenv()
+
+# Setup URL target dan token dari env
+TARGET_URL = os.getenv("TARGET_URL", "http://localhost:3000")
+API_KEY = os.getenv("API_KEY", "KUNCI_PREMIUM_999")
+
+API_URL = f"{TARGET_URL}/api/chat"
 
 def main():
     # Setup Window Utama
@@ -59,8 +66,15 @@ def main():
     def process_api_call(prompt_text):
         try:
             payload = {"prompt": prompt_text}
+            
+            # INJECTION: Menambahkan Token Rahasia Klien sebagai Autentikasi API
+            headers = {
+                "Authorization": f"Bearer {API_KEY}",
+                "Content-Type": "application/json"
+            }
+            
             # Timeout dinaikin jadi 100 detik karena proses fisik UI lumayan lama (15s nunggu AI mikir)
-            response = requests.post(API_URL, json=payload, timeout=100)
+            response = requests.post(API_URL, json=payload, headers=headers, timeout=100)
             
             if response.status_code == 200:
                 data = response.json()
