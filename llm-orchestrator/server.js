@@ -18,11 +18,15 @@ const HTTP_PORT = 3000;
 
 // === PUSAT KOMANDO HTTP API ===
 app.post('/api/chat', (req, res) => {
-  const { prompt } = req.body;
+  let { prompt } = req.body;
 
   if (!prompt) {
     return res.status(400).json({ error: "Prompt tidak boleh kosong" });
   }
+
+  // INJECTION: Memaksa ChatGPT menjawab dengan sangat singkat agar tidak over-timeout
+  const strictConstraint = "\n\n(PENTING: Jawab secara super padat dan langsung ke intinya. Tidak boleh lebih dari 50 kata.)";
+  prompt = prompt + strictConstraint;
 
   const taskId = uuidv4();
 

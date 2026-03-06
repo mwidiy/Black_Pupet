@@ -38,13 +38,60 @@ async def connect_to_markas():
             print(f"❌ Error: {e}")
             await asyncio.sleep(5)
 
+
 async def eksekusi_prompt_human(websocket, teks_prompt, task_id):
     print(f"🤖 Mulai ngetik prompt untuk Task: {task_id}")
-    await asyncio.sleep(1)
     
-    # 1. Ngetik
+    # === FASE AUTO-LOCATE KOLOM PROMPT === #
+    print("🔍 [FASE 1] Mencari posisi Kolom Prompt di layar...")
+    prompt_img = "kolom_promp.png"
+    if not os.path.exists(prompt_img):
+        print(f"❌ ERROR: Gambar '{prompt_img}' tidak ditemukan! Eksekusi batal.")
+        return
+
+    try:
+        # Cari kotak input di layar
+        batas_waktu_cari = 5 # detik
+        start_time = time.time()
+        lokasi_ditemukan = None
+
+        while time.time() - start_time < batas_waktu_cari:
+            try:
+                # confidence 0.8 butuh opencv-python yang sudah kita install
+                lokasi_ditemukan = pyautogui.locateOnScreen(prompt_img, confidence=0.8)
+                if lokasi_ditemukan:
+                    break
+            except pyautogui.ImageNotFoundException:
+                pass
+            await asyncio.sleep(0.5)
+
+        if lokasi_ditemukan:
+            # Pindah dan Klik ke tengah box input
+            cx = lokasi_ditemukan.left + (lokasi_ditemukan.width / 2)
+            cy = lokasi_ditemukan.top + (lokasi_ditemukan.height / 2)
+            print(f"🎯 Kolom Prompt ditemukan di Koordinat (X:{int(cx)}, Y:{int(cy)}). Mengunci target...")
+            
+            pyautogui.moveTo(cx, cy, duration=0.5)
+            await asyncio.sleep(0.2)
+            pyautogui.click()
+            await asyncio.sleep(0.5)
+        else:
+            print(f"❌ Gagal menemukan '{prompt_img}' di layar. Pastikan browser ChatGPT terbuka jelas!")
+            return
+
+    except Exception as e:
+        print(f"❌ Terjadi error saat mencari Kolom Prompt: {e}")
+        return
+
+    # === FASE NGETIK === #
+    print("✍️ Mulai Mengetik...")
     for char in teks_prompt:
-        pyautogui.write(char)
+        if char == '\n':
+            pyautogui.keyDown('shift')
+            pyautogui.press('enter')
+            pyautogui.keyUp('shift')
+        else:
+            pyautogui.write(char)
         delay = random.uniform(0.01, 0.05)
         await asyncio.sleep(delay)
         
@@ -54,33 +101,50 @@ async def eksekusi_prompt_human(websocket, teks_prompt, task_id):
     print("⌨️ Neken tombol Enter! Menunggu ChatGPT berpikir...")
     pyautogui.press('enter')
     
-    # === FASE PENCURIAN DATA (SNIPER VISION) === #
-    print("⏳ Menunggu AI generate balasan (15 detik)...")
+    # === FASE PENGAMBILAN DATA (SNIPER VISION V3) === #
+    print("⏳ Menunggu AI generate balasan pertama (15 detik)...")
     await asyncio.sleep(15)
 
-    print("🎯 Mengaktifkan SNIPER VISION untuk mengunci tombol Copy terbawah...")
+    # Cek Ikon Scroll Down Terlebih Dahulu
+    print("⏬ [FASE 1.5] Mengecek apakah ada tombol Scroll Down...")
+    scroll_icon_path = "scroll_icon.png"
+    if os.path.exists(scroll_icon_path):
+        try:
+            scroll_target = pyautogui.locateOnScreen(scroll_icon_path, confidence=0.85)
+            if scroll_target:
+                print("⏬ Tombol Scroll Down ditemukan! Mengklik agar mentok ke jawaban terbaru...")
+                cx = scroll_target.left + (scroll_target.width / 2)
+                cy = scroll_target.top + (scroll_target.height / 2)
+                pyautogui.moveTo(cx, cy, duration=0.3)
+                pyautogui.click()
+                await asyncio.sleep(1.5) # Kasih waktu web ChatGPT buat loncat ke bawah
+        except pyautogui.ImageNotFoundException:
+            print("⏬ Tidak ada tombol Scroll Down (Jawaban mungkin pendek/sudah mentok bawah). Lanjut...")
+    else:
+        print("⚠️ Warning: Gambar 'scroll_icon.png' tidak ada di folder agen. Melompati step ini.")
+
+    print("🎯 [FASE 2] Mencari tombol Copy...")
     image_path = "copy_icon.png" 
     
     if not os.path.exists(image_path):
-        print(f"❌ ERROR: Gambar '{image_path}' tidak ditemukan di folder ini!")
+        print(f"❌ ERROR: Gambar '{image_path}' tidak ada!")
         return
 
-    # Bersihin clipboard sebelumnya
-    pyperclip.copy('')
+    pyperclip.copy('') # Bersihkan clipboard
     
     try:
-        # locateAllOnScreen mengembalikan generator iterasi, kita ubah jadi list biar bisa disorting
-        print("🌍 Melakukan sweeping seluruh monitor...")
-        semua_target = list(pyautogui.locateAllOnScreen(image_path, confidence=0.85))
-        
+        semua_target = []
+        try:
+            semua_target = list(pyautogui.locateAllOnScreen(image_path, confidence=0.85))
+        except pyautogui.ImageNotFoundException:
+            semua_target = []
+
         if len(semua_target) > 0:
-            print(f"📡 Radar mendeteksi {len(semua_target)} tombol Copy di layar!")
-            
-            # Kita urutkan berdasarkan kordinat Y (dari atas ke bawah)
+            print(f"📡 Radar menangkap {len(semua_target)} Ikon Copy!")
             semua_target_sorted = sorted(semua_target, key=lambda box: box.top)
             target_terbawah = semua_target_sorted[-1]
             
-            print(f"🎯 Mengunci target TERBAWAH pada Y: {target_terbawah.top}")
+            print(f"🎯 Mengunci target tombol Paling Bawah...")
             
             center_x = target_terbawah.left + (target_terbawah.width / 2)
             center_y = target_terbawah.top + (target_terbawah.height / 2)
@@ -91,7 +155,7 @@ async def eksekusi_prompt_human(websocket, teks_prompt, task_id):
             pyautogui.click()
             print("🔫 Target Copy Headshot berhasil dieksekusi!")
             
-            await asyncio.sleep(1)
+            await asyncio.sleep(1) # Tunggu clipboard ngisi
             
             raw_text = pyperclip.paste()
             
@@ -102,20 +166,17 @@ async def eksekusi_prompt_human(websocket, teks_prompt, task_id):
                     "text": raw_text
                 }
                 await websocket.send(json.dumps(payload))
-                print(f"📤 Laporan rahasia untuk Task ID {task_id} berhasil dikirim ke Markas!")
+                print(f"📤 Laporan rahasia untuk Task ID {task_id} terkirim!")
             else:
-                print("❌ Clipboard kosong... Copy gagal.")
+                print("❌ Clipboard kosong. Gagal Copy.")
         else:
-            print("❌ Gagal menemukan satupun tombol Copy di layar.")
+            print("❌ GAGAL TOTAL. Tidak menemukan satupun blok Copy di layar.")
             
-    except pyautogui.ImageNotFoundException:
-         print("❌ Gambar tidak ditemukan di layar.")
     except Exception as e:
-        print(f"❌ Terjadi error saat operasi Sniper: {e}")
+        print(f"❌ Terjadi error saat operasi Auto-Scroll Sniper: {e}")
+
 
 if __name__ == "__main__":
-    print("=== OS-LEVEL SNIPER VISION PROTOCOL ===")
-    print("1. Pastikan file 'copy_icon.png' (ukuran kecil) udah lu sediakan.")
-    print("2. Pas jalanin, kursor wajib kedap-kedip di dalam text box ChatGPT.")
-    print("3. JANGAN GERAKIN LAYAR/MOUSE saat dia ngeluarin Radar di detik 15!")
+    print("=== SNIPER VISION V3 (SCROLL ICON & SHIFT+ENTER) ===")
+    print("Memastikan ada file: 1. copy_icon.png | 2. kolom_promp.png | 3. scroll_icon.png")
     asyncio.run(connect_to_markas())
