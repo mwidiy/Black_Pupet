@@ -16,6 +16,9 @@ ENV PYTHONUNBUFFERED 1
 # Menetapkan zona waktu agar log bot sinkron dengan kita
 ENV TZ="Asia/Jakarta"
 
+# Bypass Strict X11 Authentication untuk PyAutoGUI
+ENV XAUTHORITY=/tmp/.Xauthority
+
 # Update OS Linux dan install dependencies krusial untuk Xvfb, Chrome, OpenCV, dan PyAutoGUI
 RUN apt-get update && apt-get install -y \
     xvfb \
