@@ -1,5 +1,13 @@
 # Menggunakan base image Python yang ringan
-FROM python:3.10-slim
+# Menggunakan base image Ubuntu 22.04 lengkap
+FROM ubuntu:22.04
+
+# Hindari interaksi saat apt-get install
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install Python 3 dan PIP terlebih dahulu
+RUN apt-get update && apt-get install -y python3 python3-pip python-is-python3
+
 
 # Mencegah Python membuat file .pyc dan memastikannya jalan secara unbuffered
 ENV PYTHONDONTWRITEBYTECODE 1
