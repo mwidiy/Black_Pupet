@@ -18,6 +18,13 @@ export DISPLAY=:99
 echo "✅ DISPLAY=:99 sudah di-export! Python PyAutoGUI sekarang punya Mata."
 
 # ======================================================================
+# BIKIN TIKET PALSU UNTUK X11 AUTHENTICATION (Biar Xlib / PyAutoGUI ga error)
+# ======================================================================
+echo "🎫 Mencetak Tiket Auth X11 Palsu..."
+touch /tmp/.Xauthority
+xauth add :99 . $(xxd -l 16 -p /dev/urandom)
+
+# ======================================================================
 # MENYALAKAN BROWSER GOOGLE CHROME (DI BALIK LAYAR HANTU)
 # ======================================================================
 

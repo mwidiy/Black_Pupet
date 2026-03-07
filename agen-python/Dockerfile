@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     curl \
     unzip \
+    xxd \
     libnss3 \
     libgconf-2-4 \
     libfontconfig1 \
