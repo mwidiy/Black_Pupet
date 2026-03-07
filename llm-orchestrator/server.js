@@ -167,6 +167,24 @@ wss.on('connection', function connection(ws) {
         } else {
           console.log(`⚠️ Jawaban masuk tapi tidak ada Task yang sedang aktif/menunggu.`);
         }
+      } else if (message.action === "AI_ERROR") {
+        console.log('\n=============================================');
+        console.log(`❌ [WEB SOCKET] PROTOKOL DARURAT: AI_ERROR DITERIMA!`);
+        console.log(`   Task ID Laporan : ${message.taskId || "TIDAK MENYERTAKAN ID"}`);
+        console.log(`   Detail Error : ${message.error || "Unknown Error"}`);
+        console.log('=============================================\n');
+
+        if (isProcessing && activeJob) {
+          console.log(`❌ Langsung me-Reject Task: ${activeJob.taskId} tanpa menunggu 90 detik!`);
+
+          activeJob.res.status(500).json({
+            success: false,
+            taskId: activeJob.taskId,
+            error: `Agen Fisik Python Gagal: ${message.error}`
+          });
+
+          resetStateAndProcessNext();
+        }
       } else {
         console.log('📩 Log Agen: %s', messageRaw);
       }
