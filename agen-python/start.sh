@@ -24,13 +24,7 @@ echo "✅ DISPLAY=:99 sudah di-export! Python PyAutoGUI sekarang punya Mata."
 echo "🌐 Membuka Google Chrome dengan Profil Session yang tersimpan..."
 # Kita menggunakan argument spesifik Linux agar Chrome bisa jalan walau di environment Root Docker
 # --user-data-dir sangat penting: ini folder tempat Cookies ChatGPT Anda dibaca agar tidak log-out
-google-chrome --no-sandbox \\
-              --disable-dev-shm-usage \\
-              --disable-gpu \\
-              --window-size=1920,1080 \\
-              --window-position=0,0 \\
-              --user-data-dir="/app/chrome_profile" \\
-              "https://chatgpt.com/" &
+google-chrome --no-sandbox --disable-dev-shm-usage --disable-gpu --window-size=1920,1080 --window-position=0,0 --user-data-dir="/app/chrome_profile" "https://chatgpt.com/" &
 
 # Beri waktu 5 detik agar Chrome selesai memuat halaman ChatGPT 
 echo "⏳ Menunggu Chrome rendering halaman ChatGPT selama 5 detik..."
