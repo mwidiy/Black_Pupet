@@ -28,6 +28,11 @@ xauth add :99 . $(xxd -l 16 -p /dev/urandom)
 # MENYALAKAN BROWSER GOOGLE CHROME (DI BALIK LAYAR HANTU)
 # ======================================================================
 
+echo "🧹 Membersihkan Gembok Lock Chrome sisa operasi sebelumnya..."
+rm -f /app/chrome_profile/SingletonLock
+rm -f /app/chrome_profile/SingletonCookie
+rm -f /app/chrome_profile/SingletonSocket
+
 echo "🌐 Membuka Google Chrome dengan Profil Session yang tersimpan..."
 # Kita menggunakan argument spesifik Linux agar Chrome bisa jalan walau di environment Root Docker
 # --user-data-dir sangat penting: ini folder tempat Cookies ChatGPT Anda dibaca agar tidak log-out
