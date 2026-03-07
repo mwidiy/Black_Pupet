@@ -194,6 +194,6 @@ wss.on('connection', function connection(ws) {
   });
 });
 
-app.listen(HTTP_PORT, () => {
-  console.log(`🌍 API Server REST nyala di http://localhost:${HTTP_PORT}`);
+app.listen(HTTP_PORT, '0.0.0.0', () => {
+  console.log(`🌍 API Server REST nyala dan terbuka di port ${HTTP_PORT} (0.0.0.0)`);
 });
