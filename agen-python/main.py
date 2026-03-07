@@ -14,7 +14,9 @@ from dotenv import load_dotenv
 
 async def connect_to_markas():
     load_dotenv()
-    TARGET_URL = os.getenv("TARGET_URL", "http://localhost:3000")
+    # Jika tidak ada TARGET_URL di OS/Docker, gunakan host jaringan Docker (host.docker.internal)
+    # atau langsung tembak IP Publik VPS Anda sebagai fallback keras
+    TARGET_URL = os.getenv("TARGET_URL", "http://202.155.143.189:3000")
     uri = TARGET_URL.replace("http://", "ws://").replace("https://", "wss://").replace(":3000", ":8080")
     
     while True:
