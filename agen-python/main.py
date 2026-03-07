@@ -10,14 +10,18 @@ import os
 # Konfigurasi PyAutoGUI
 pyautogui.PAUSE = 0.05
 
+from dotenv import load_dotenv
+
 async def connect_to_markas():
-    uri = "ws://localhost:8080"
+    load_dotenv()
+    TARGET_URL = os.getenv("TARGET_URL", "http://localhost:3000")
+    uri = TARGET_URL.replace("http://", "ws://").replace("https://", "wss://").replace(":3000", ":8080")
     
     while True:
         try:
-            print("🚀 Agen Python SNIPER VISION mencoba menyusup...")
+            print(f"🚀 Agen Python SNIPER VISION mencoba menyusup ke {uri}...")
             async with websockets.connect(uri) as websocket:
-                print("🎧 Earpiece nyala! Terhubung ke Markas (ws://localhost:8080)")
+                print(f"🎧 Earpiece nyala! Terhubung ke Markas ({uri})")
                 
                 while True:
                     pesan_raw = await websocket.recv()
