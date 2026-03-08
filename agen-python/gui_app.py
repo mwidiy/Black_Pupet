@@ -3,18 +3,50 @@ from tkinter import scrolledtext
 import threading
 import requests
 import os
+import atexit
 from dotenv import load_dotenv
+from sshtunnel import SSHTunnelForwarder
 
 # Load configurasi dari .env
 load_dotenv()
 
 # Setup URL target dan token dari env
-TARGET_URL = os.getenv("TARGET_URL", "http://localhost:3000")
+TARGET_URL = os.getenv("TARGET_URL", "http://127.0.0.1:3000")
 API_KEY = os.getenv("API_KEY", "KUNCI_PREMIUM_999")
 
 API_URL = f"{TARGET_URL}/api/chat"
 
+# GLOBAL SSH TUNNEL
+tunnel = None
+
+def start_ssh_tunnel():
+    global tunnel
+    try:
+        print("Membangun Terowongan SSH ke VPS...")
+        tunnel = SSHTunnelForwarder(
+            ('202.155.143.189', 16170),
+            ssh_username="ubuntu",
+            ssh_password="yanto@VPS",
+            remote_bind_address=('127.0.0.1', 3000),
+            local_bind_address=('127.0.0.1', 3000)
+        )
+        tunnel.start()
+        print("✅ Terowongan SSH AKTIF di Port 3000!")
+    except Exception as e:
+        print(f"Gagal membangun terowongan SSH: {e}")
+
+def stop_ssh_tunnel():
+    global tunnel
+    if tunnel:
+        print("Menutup Terowongan SSH...")
+        tunnel.stop()
+
+atexit.register(stop_ssh_tunnel)
+
 def main():
+    # Jalankan Tunnel SSH secara Background sebelum GUI muncul
+    threading.Thread(target=start_ssh_tunnel, daemon=True).start()
+
     # Setup Window Utama
     root = tk.Tk()
     root.title("Sniper OS-Level - Panel Kontrol")

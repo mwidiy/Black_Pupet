@@ -94,7 +94,15 @@ async def eksekusi_prompt_human(websocket, teks_prompt, task_id):
             pyautogui.click()
             await asyncio.sleep(0.5)
         else:
-            raise Exception(f"Gagal menemukan kotak '{prompt_img}' di layar (Kemungkinan tertutup iklan/pop-up).")
+            print(f"⚠️ Gagal menemukan kotak '{prompt_img}'. Menggunakan jalur Fallback Buta (X:960, Y:560)...")
+            pyautogui.moveTo(960, 560, duration=0.5)
+            await asyncio.sleep(0.2)
+            pyautogui.click()
+            
+            # Click escape a few times just in case there's an overlay popup
+            pyautogui.press('esc')
+            pyautogui.click()
+            await asyncio.sleep(0.5)
 
         # === FASE NGETIK === #
         print("✍️ Mulai Mengetik...")
