@@ -38,6 +38,7 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     scrot \
     gnome-screenshot \
+    xclip \
     python3-tk \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
